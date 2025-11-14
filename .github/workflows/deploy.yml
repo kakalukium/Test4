@@ -27,18 +27,14 @@ jobs:
       - name: Build content
         run: npm run build
         
+      # === NEW STEP: Create .nojekyll to ensure GitHub Pages serves all files ===
+      - name: Create .nojekyll
+        run: touch .nojekyll
+
+      # === FINAL STEP: Deploy to GitHub Pages ===
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir:
-          
-            
-# ... (after the 'Build content' step)
-
-      - name: Create .nojekyll
-        run: touch .nojekyll
-        
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-# ... (rest of the file remains the same)  ./
+          # This tells the action to deploy the entire root directory of the runner workspace
+          publish_dir: ./
