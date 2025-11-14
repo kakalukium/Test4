@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Your Static Document Hub</title>
+    
+    <style>
+        :root { 
+            --bg: #1e1e1e; 
+            --card: #2a2a2a; 
+            --subtle: #888888; 
+            --accent: #007bff;
+            /* Define different font families for different sections */
+            --font-main:'SF Mono', 'sans-serif', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue';
+            --font-post-mobile: 'Menlo','Consolas','Monaco', 'SFMono-Regular', 'SF Mono', 'Roboto Mono', 'Droid Sans Mono';
+            --font-post-desktop: 'Menlo','Liberation Mono', 'Consolas', 'Monaco', 'SFMono-Regular', 'SF Mono', 'Droid Sans Mono';   
+            
+            /* Color variables for different sections */
+            --text-main: #ffffff;
+            --subtle-main: #b9b7b7;
+            --text-post: #d8d8d8;
+            --subtle-post: #888888;
+        }
+        
+        /* Apply main font and colors to body */
+        body { 
+            background: var(--bg); 
+            color: var(--text-main); 
+            font-family: var(--font-main); 
+            margin: 0; 
+            padding: 20px; 
+        }
+        
+        #app-container { max-width: 1200px; margin: 0 auto; }
+        .main-content { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .doc-card { background: var(--card); border-radius: 8px; padding: 20px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; min-height: 100px; }
+        .doc-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        .doc-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 5px; color: var(--text-main); }
+        .doc-description { color: var(--subtle-main); font-size: 0.9rem; }
+        .search { width: 100%; padding: 10px 15px; margin-bottom: 20px; background: var(--card); border: 1px solid #444; border-radius: 4px; color: var(--text-main); box-sizing: border-box; font-size: 1rem; }
+        table { width: 100%; border-collapse: collapse; max-width: 900px; margin: 0 auto; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #333; font-size: 0.95rem; }
+        th { color: var(--subtle-main); font-weight: 500; }
+        tr:hover { background: rgba(255,255,255,0.05); cursor: pointer; }
+        .post-title-cell .title { font-weight: 600; margin-bottom: 3px; display: block; color: var(--text-main); }
+        .post-title-cell .description { color: var(--subtle-main); font-size: 0.85rem; display: block; line-height: 1.4; }
+        #recent-posts-card table th, #recent-posts-card table td { padding: 8px 0; border-bottom: 1px solid #3a3a3a; }
+        
+        /* Apply post font and colors only to post content */
+        #post-content { 
+            font-family: var(--font-post-mobile);
+            color: var(--text-post);
+        }
+        
+        /* Desktop styles for post content */
+        @media (min-width: 768px) {
+            #post-content {
+                font-family: var(--font-post-desktop);
+            }
+        }
+        
+        #post-content h1, #post-content h2, #post-content h3 { 
+            font-weight: 700; 
+            color: var(--text-post);
+        }
+        #post-content h1 { font-size: 2.5rem; margin-top: 0; }
+        
+        .meta { color: var(--subtle-post); margin-bottom: 20px; font-size: 0.9rem; }
+        .content-container { border: 1px solid #333; border-radius: 6px; margin-bottom: 0; overflow: hidden; }
+        #cryptpad-embed { width: 100%; height: 80vh; border: none; background: #1a1a1a; display: block; }
+        #static-content { 
+            font-size: 110%;
+            padding: 20px; 
+            line-height: 1.7; 
+            background: var(--card);
+            /* Apply post font and colors to static content */
+            font-family: var(--font-post-mobile);
+            color: var(--text-post);
+        }
+        
+        /* Desktop styles for static content */
+        @media (min-width: 768px) {
+            #static-content {
+                font-family: var(--font-post-desktop);
+                font-size: 110%;
+            }
+        }
+
+        /* Mobile styles for static content */
+        @media (max-width: 767px) {
+             .content-container {
+                 margin-top: 50px;
+             }
+            #static-content {
+                font-size: 80%;
+            }
+        }
+        
+        .platform-tabs { display: flex; border-bottom: 1px solid #333; margin-bottom: 20px; }
+        .tab-btn { padding: 10px 20px; background: transparent; border: none; color: var(--subtle-main); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s ease; }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .giscus-frame { width: 100%; border: none; }
+    </style>
+</head>
+<body>
+    <div id="app-container"><h1>Loading Application...</h1></div>
+
+    <script async src="https://platform.twitter.com/widgets.js"></script>
+
+    <script>
+        const POSTS_DATA = [
+            { id: "archetype", title: "The Male Archetype in Modern Society", description: "A long-form reflection on power dynamics and identity.", date: "2025-11-09", tags: ["philosophy", "gender"], category: "essays", cryptpad_url: "https://cryptpad.fr/pad/#/2/pad/view/ABC123/", x_id: "1987934573683237200", reddit_url: "https://www.reddit.com/r/delhi/comments/1osjg99/theyre_detaining_people/" },
+            
+            // --- NEW SAMPLE POST FOR CONTENT ---
+            { 
+                id: "font-showcase", 
+                title: "Font Styling Showcase", 
+                description: "A demonstration of the custom font applied to a local HTML post.", 
+                date: "2025-11-12", 
+                tags: ["design", "css", "font"], 
+                category: "essays", 
+                content: `
+                <div style="padding: 10px 0;">
+                    <h2>Static Content with Custom Font Styling</h2>
+                    <p>This content uses different fonts and colors compared to the main pages:</p>
+                    <ul>
+                        <li><strong>Font:</strong> Consolas on desktop, monospace on mobile</li>
+                        <li><strong>Text Color:</strong> Lighter gray (#cccccc)</li>
+                        <li><strong>Subtle Color:</strong> Medium gray (#888888)</li>
+                    </ul>
+                    
+                    <h3>Readability Check</h3>
+                    <p>The specialized styling creates a distinct reading experience separate from the navigation interface.</p>
+                    
+                    <ol>
+                        <li>This list item demonstrates the paragraph text styling.</li>
+                        <li><strong>Bold text</strong> maintains the post color scheme.</li>
+                        <li><em>Italic text</em> offers stylistic variation within the same palette.</li>
+                    </ol>
+                    
+                    <h4>Device Testing</h4>
+                    <p>On desktop: Consolas font<br>On mobile: System monospace font</p>
+                </div>
+                `
+            },
+            // --- END NEW SAMPLE POST ---
+
+            { id: "truth-blogging", title: "Truth Social as Macro-Blogging", description: "Analysis of long-form non-interactive posting.", date: "2025-11-05", tags: ["social media"], category: "rants", content: "<p>Truth Social proves single-author format works.</p>", x_id: "1987934573683237200", reddit_url: "https://www.reddit.com/r/delhi/comments/1osjg99/theyre_detaining_people/" },
+            { id: "rant-1", title: "Why Modern Dating is Broken", description: "Raw take on dating apps.", date: "2025-11-03", tags: ["rant"], category: "rants", cryptpad_url: "https://cryptpad.fr/code/#/2/code/view/XYZ789/", x_id: "1987934573683237200", reddit_url: "https://www.reddit.com/r/delhi/comments/1osjg99/theyre_detaining_people/" },
+            { id: "research-1", title: "Data on Male Loneliness (2025)", description: "Statistical rise in loneliness.", date: "2025-11-01", tags: ["data"], category: "research", content: "<p>Sharp rise in self-reported loneliness.</p>", x_id: "1987934573683237200", reddit_url: "https://www.reddit.com/r/delhi/comments/1osjg99/theyre_detaining_people/" }
+        ];
+
+        window.POSTS_DATA = POSTS_DATA;
+        window.POSTS_MAP = POSTS_DATA.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+        window.CATEGORIES = {
+            essays: { title: "Essays", description: "Long-form reflections." },
+            rants: { title: "Rants", description: "Raw takes." },
+            research: { title: "Research", description: "Data & analysis." },
+            drafts: { title: "Drafts", description: "WIP." }
+        };
+
+        // Separate function for content tabs to prevent conflict with discussion tabs
+        function openContentTab(btn, tabName) {
+            document.querySelectorAll('.content-tabs .tab-content').forEach(t => { t.classList.remove('active'); t.style.display = 'none'; });
+            document.querySelectorAll('.content-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active'); 
+            document.getElementById(tabName).style.display = 'block';
+            if (btn) btn.classList.add('active');
+        }
+        window.openContentTab = openContentTab; // Make accessible from post.html
+
+        function openTab(btn, tabName) {
+            document.querySelectorAll('.comments-section .tab-content').forEach(t => { t.classList.remove('active'); t.style.display = 'none'; });
+            document.querySelectorAll('.comments-section .tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active'); document.getElementById(tabName).style.display = 'block';
+            if (btn) btn.classList.add('active');
+            if (tabName === 'twitter' && window.twttr) setTimeout(() => twttr.widgets.load(), 100);
+            if (tabName === 'giscus') loadGiscus();
+        }
+
+        function loadGiscus() {
+            const giscusContainer = document.getElementById('giscus-container');
+            if (giscusContainer && !giscusContainer.querySelector('iframe')) {
+                const script = document.createElement('script');
+                script.src = "https://giscus.app/client.js";
+                script.setAttribute('data-repo', "kakalukium/Test");
+                script.setAttribute('data-repo-id', "R_kgDOQSQMcQ");
+                script.setAttribute('data-category', "Announcements");
+                script.setAttribute('data-category-id', "DIC_kwDOQSQMcc4CxrCG");
+                script.setAttribute('data-mapping', "pathname");
+                script.setAttribute('data-strict', "0");
+                script.setAttribute('data-reactions-enabled', "1");
+                script.setAttribute('data-emit-metadata', "0");
+                script.setAttribute('data-input-position', "bottom");
+                script.setAttribute('data-theme', "dark");
+                script.setAttribute('data-lang', "en");
+                script.setAttribute('crossorigin', "anonymous");
+                script.async = true;
+                giscusContainer.appendChild(script);
+            }
+        }
+
+        function initializeEmbeds(post) {
+            const xContainer = document.getElementById('x-embed-container');
+            xContainer.innerHTML = '';
+            if (post.x_id) {
+                if (window.twttr && twttr.widgets) {
+                    twttr.widgets.createTweet(post.x_id, xContainer, { theme: 'dark', conversation: 'all' });
+                } else {
+                    xContainer.innerHTML = `<blockquote class="twitter-tweet">Loading X thread...</blockquote>`;
+                }
+            } else {
+                xContainer.innerHTML = `<p style="color:var(--subtle-post);">No X thread linked.</p>`;
+            }
+
+            const redditIframe = document.getElementById('reddit-iframe');
+            if (post.reddit_url) {
+                const match = post.reddit_url.match(/\/r\/[^/]+\/comments\/[^/]+/);
+                redditIframe.src = match ? `https://www.reddit.com${match[0]}/embed?theme=dark` : 'about:blank';
+            } else {
+                redditIframe.src = 'about:blank';
+            }
+        }
+
+        function navigate(view, params = {}) {
+            const url = new URL(window.location);
+            url.searchParams.set('view', view);
+            Object.keys(params).forEach(k => url.searchParams.set(k, params[k]));
+            history.pushState(params, '', url);
+            render();
+        }
+
+        window.addEventListener('popstate', render);
+
+        async function loadView(name, params = {}) {
+            const container = document.getElementById('app-container');
+            container.innerHTML = '<h1>Loading...</h1>';
+            try {
+                const res = await fetch(`${name}.html`);
+                if (!res.ok) throw new Error();
+                container.innerHTML = await res.text();
+                if (name === 'hub') initHub();
+                if (name === 'posts') initPostsTable(params.category);
+                if (name === 'post') initPostDetail(params.id);
+            } catch (e) {
+                container.innerHTML = `<h1>Error</h1><p>File ${name}.html not found.</p>`;
+            }
+        }
+
+        function initHub() {
+            document.getElementById('page-title').textContent = 'Document Hub';
+            const content = document.querySelector('.main-content');
+            content.innerHTML = '';
+            Object.keys(window.CATEGORIES).forEach(k => {
+                const card = document.createElement('div');
+                card.className = 'doc-card';
+                card.innerHTML = `<div class="doc-title">${window.CATEGORIES[k].title}</div><div class="doc-description">${window.CATEGORIES[k].description}</div>`;
+                card.onclick = () => navigate('posts', { category: k });
+                content.appendChild(card);
+            });
+        }
+
+        function initPostsTable(category) {
+            const posts = window.POSTS_DATA.filter(p => p.category === category);
+            const all = window.POSTS_DATA;
+            const sorted = [...all].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            document.getElementById('category-title').textContent = `${window.CATEGORIES[category].title} Posts`;
+            document.getElementById('page-title').textContent = `${window.CATEGORIES[category].title} Posts`;
+
+            const tbody = document.querySelector('#post-table tbody');
+            const render = list => {
+                tbody.innerHTML = '';
+                list.forEach(p => {
+                    const row = tbody.insertRow();
+                    row.dataset.id = p.id;
+                    row.onclick = () => navigate('post', { id: p.id });
+                    row.innerHTML = `<td class="post-title-cell"><span class="title">${p.title}</span><span class="description">${p.description}</span></td><td>${p.date}</td><td>${p.tags.join(', ')}</td>`;
+                });
+            };
+            render(posts);
+
+            document.getElementById('search').oninput = e => {
+                const q = e.target.value.toLowerCase();
+                const filtered = posts.filter(p => `${p.title} ${p.description} ${p.tags.join(' ')} ${p.date}`.toLowerCase().includes(q));
+                render(filtered);
+            };
+
+            const recent = document.querySelector('#recent-posts-card #recent-table tbody');
+            if (recent) {
+                document.getElementById('recent-posts-card').style.display = 'block';
+                recent.innerHTML = '';
+                sorted.slice(0, 10).forEach(p => {
+                    const row = recent.insertRow();
+                    row.onclick = () => navigate('post', { id: p.id });
+                    row.innerHTML = `<td class="post-title-cell"><span class="title">${p.title}</span></td><td>${p.date}</td>`;
+                });
+            }
+        }
+
+        function initPostDetail(id) {
+            const post = window.POSTS_MAP[id];
+            if (!post) { alert('Post not found'); navigate('hub'); return; }
+            document.getElementById('post-title').textContent = post.title;
+            document.getElementById('page-title').textContent = post.title;
+            document.getElementById('post-meta').textContent = `${post.date} • ${post.tags.join(', ')}`;
+
+            const staticDiv = document.getElementById('static-content');
+            const iframe = document.getElementById('cryptpad-embed');
+            
+            // Set static content and iframe source first
+            staticDiv.innerHTML = post.content || 'No static content.';
+            if (post.cryptpad_url) {
+                iframe.src = post.cryptpad_url.replace('/edit/', '/view/') + '?embed=1';
+            } else {
+                iframe.src = 'about:blank';
+            }
+
+            // Determine which content tab to open on load
+            if (post.cryptpad_url) {
+                openContentTab(document.getElementById('cryptpad-tab-btn'), 'cryptpad-embed-tab');
+            } else {
+                openContentTab(document.getElementById('static-tab-btn'), 'static-content-tab');
+            }
+            
+            initializeEmbeds(post);
+            openTab(document.querySelector('#twitter-tab-btn'), 'twitter');
+        }
+
+        function render() {
+            const params = new URLSearchParams(location.search);
+            const view = params.get('view') || 'hub';
+            const opts = { category: params.get('category'), id: params.get('id') };
+            loadView(view, opts);
+        }
+
+        window.onload = render;
+    </script>
+</body>
+</html>
