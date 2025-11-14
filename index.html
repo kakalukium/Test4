@@ -47,6 +47,42 @@
         .post-title-cell .description { color: var(--subtle-main); font-size: 0.85rem; display: block; line-height: 1.4; }
         #recent-posts-card table th, #recent-posts-card table td { padding: 8px 0; border-bottom: 1px solid #3a3a3a; }
         
+        /* Pagination styles */
+        .pagination { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            margin: 20px 0; 
+            gap: 10px; 
+        }
+        .load-more-btn { 
+            background: var(--accent); 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 0.9rem; 
+        }
+        .load-more-btn:hover { 
+            background: #0056b3; 
+        }
+        .load-more-btn:disabled { 
+            background: var(--subtle); 
+            cursor: not-allowed; 
+        }
+        .page-info { 
+            color: var(--subtle-main); 
+            font-size: 0.9rem; 
+        }
+        
+        /* Search results styles */
+        .search-results-info { 
+            color: var(--subtle-main); 
+            margin-bottom: 15px; 
+            font-size: 0.9rem; 
+        }
+        
         /* Apply post font and colors only to post content */
         #post-content { 
             font-family: var(--font-post-mobile);
@@ -111,6 +147,242 @@
     <script async src="https://platform.twitter.com/widgets.js"></script>
 
     <script>
+        // ========== STEP 5.1: PAGINATION IMPLEMENTATION ==========
+        const POSTS_PER_PAGE = 20;
+        let currentPage = 1;
+        let currentCategory = '';
+        let currentSearchQuery = '';
+        let allPosts = [];
+        let filteredPosts = [];
+
+        // Replace POSTS_DATA with paginated loading
+        async function loadPosts(page = 1, category = '', searchQuery = '') {
+            try {
+                // Try to load from JSON files first (for GitHub Pages migration)
+                const response = await fetch(`_data/pages/page-${page}.json`);
+                if (response.ok) {
+                    return await response.json();
+                }
+            } catch (error) {
+                console.log('Using fallback POSTS_DATA');
+            }
+            
+            // Fallback to original POSTS_DATA during migration
+            let posts = window.POSTS_DATA || [];
+            
+            // Apply category filter
+            if (category && category !== 'all') {
+                posts = posts.filter(p => p.category === category);
+            }
+            
+            // Apply search filter
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                posts = posts.filter(p => 
+                    p.title.toLowerCase().includes(query) || 
+                    p.description.toLowerCase().includes(query) ||
+                    p.tags.some(tag => tag.toLowerCase().includes(query)) ||
+                    p.date.includes(query)
+                );
+            }
+            
+            // Sort by date (newest first)
+            posts.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            // Manual pagination for fallback data
+            const start = (page - 1) * POSTS_PER_PAGE;
+            const end = start + POSTS_PER_PAGE;
+            return posts.slice(start, end);
+        }
+
+        async function loadMorePosts() {
+            currentPage++;
+            const newPosts = await loadPosts(currentPage, currentCategory, currentSearchQuery);
+            
+            if (newPosts.length > 0) {
+                // Append to your posts container
+                const tbody = document.querySelector('#post-table tbody');
+                newPosts.forEach(post => {
+                    const row = tbody.insertRow();
+                    row.dataset.id = post.id;
+                    row.onclick = () => navigate('post', { id: post.id });
+                    row.innerHTML = `<td class="post-title-cell"><span class="title">${post.title}</span><span class="description">${post.description}</span></td><td>${post.date}</td><td>${post.tags.join(', ')}</td>`;
+                });
+                
+                // Update pagination info
+                updatePaginationInfo();
+            } else {
+                // No more posts to load
+                document.getElementById('load-more-btn').disabled = true;
+                document.getElementById('load-more-btn').textContent = 'No more posts';
+            }
+        }
+
+        function updatePaginationInfo() {
+            const pageInfo = document.getElementById('page-info');
+            if (pageInfo) {
+                const loadedCount = currentPage * POSTS_PER_PAGE;
+                const totalCount = filteredPosts.length || (currentCategory ? 
+                    window.POSTS_DATA.filter(p => p.category === currentCategory).length : 
+                    window.POSTS_DATA.length);
+                
+                pageInfo.textContent = `Showing ${Math.min(loadedCount, totalCount)} of ${totalCount} posts`;
+            }
+        }
+
+        // ========== STEP 5.2: SEARCH FUNCTIONALITY ==========
+        async function initSearch() {
+            const searchInput = document.getElementById('search-input');
+            if (!searchInput) return;
+
+            // Load search index from JSON file
+            let searchIndex = [];
+            try {
+                const response = await fetch('_data/search-index.json');
+                if (response.ok) {
+                    searchIndex = await response.json();
+                }
+            } catch (error) {
+                console.log('Using POSTS_DATA as search index');
+                // Fallback to POSTS_DATA
+                searchIndex = window.POSTS_DATA.map(post => ({
+                    id: post.id,
+                    title: post.title,
+                    description: post.description,
+                    date: post.date,
+                    tags: post.tags,
+                    category: post.category,
+                    content: post.content ? post.content.substring(0, 200) : ''
+                }));
+            }
+
+            searchInput.addEventListener('input', async (e) => {
+                const query = e.target.value.toLowerCase().trim();
+                currentSearchQuery = query;
+                currentPage = 1;
+
+                if (query.length === 0) {
+                    // Clear search, show all posts
+                    await refreshPostsTable(currentCategory, '');
+                    return;
+                }
+
+                // Perform search
+                const results = searchIndex.filter(post => 
+                    post.title.toLowerCase().includes(query) || 
+                    post.description.toLowerCase().includes(query) ||
+                    post.tags.some(tag => tag.toLowerCase().includes(query)) ||
+                    (post.content && post.content.toLowerCase().includes(query)) ||
+                    post.date.includes(query)
+                );
+
+                // Display search results
+                displaySearchResults(results, query);
+            });
+        }
+
+        function displaySearchResults(results, query) {
+            const tbody = document.querySelector('#post-table tbody');
+            const searchInfo = document.getElementById('search-results-info');
+            
+            if (searchInfo) {
+                if (query.length > 0) {
+                    searchInfo.textContent = `Found ${results.length} results for "${query}"`;
+                    searchInfo.style.display = 'block';
+                } else {
+                    searchInfo.style.display = 'none';
+                }
+            }
+
+            // Clear current table
+            tbody.innerHTML = '';
+            
+            if (results.length === 0 && query.length > 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--subtle-main);">No posts found matching "${query}"</td></tr>`;
+                // Hide pagination for search results
+                const pagination = document.querySelector('.pagination');
+                if (pagination) pagination.style.display = 'none';
+                return;
+            }
+
+            // Show results (paginated for first page)
+            const start = 0;
+            const end = Math.min(results.length, POSTS_PER_PAGE);
+            const pageResults = results.slice(start, end);
+
+            pageResults.forEach(post => {
+                const row = tbody.insertRow();
+                row.dataset.id = post.id;
+                row.onclick = () => navigate('post', { id: post.id });
+                row.innerHTML = `<td class="post-title-cell"><span class="title">${post.title}</span><span class="description">${post.description}</span></td><td>${post.date}</td><td>${post.tags.join(', ')}</td>`;
+            });
+
+            // Update pagination for search results
+            const pagination = document.querySelector('.pagination');
+            if (pagination) {
+                if (results.length > POSTS_PER_PAGE) {
+                    pagination.style.display = 'flex';
+                    document.getElementById('load-more-btn').disabled = false;
+                    document.getElementById('load-more-btn').textContent = 'Load More';
+                    document.getElementById('page-info').textContent = `Showing ${end} of ${results.length} results`;
+                } else {
+                    pagination.style.display = 'none';
+                }
+            }
+
+            // Store current results for pagination
+            filteredPosts = results;
+        }
+
+        async function refreshPostsTable(category, searchQuery = '') {
+            currentCategory = category;
+            currentSearchQuery = searchQuery;
+            currentPage = 1;
+
+            const posts = await loadPosts(1, category, searchQuery);
+            const tbody = document.querySelector('#post-table tbody');
+            
+            // Clear table
+            tbody.innerHTML = '';
+            
+            if (posts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--subtle-main);">No posts found</td></tr>`;
+                return;
+            }
+
+            // Render first page
+            posts.forEach(post => {
+                const row = tbody.insertRow();
+                row.dataset.id = post.id;
+                row.onclick = () => navigate('post', { id: post.id });
+                row.innerHTML = `<td class="post-title-cell"><span class="title">${post.title}</span><span class="description">${post.description}</span></td><td>${post.date}</td><td>${post.tags.join(', ')}</td>`;
+            });
+
+            // Show/hide pagination
+            const pagination = document.querySelector('.pagination');
+            if (pagination) {
+                const totalPosts = category ? 
+                    window.POSTS_DATA.filter(p => p.category === category).length : 
+                    window.POSTS_DATA.length;
+                
+                if (totalPosts > POSTS_PER_PAGE) {
+                    pagination.style.display = 'flex';
+                    document.getElementById('load-more-btn').disabled = false;
+                    document.getElementById('load-more-btn').textContent = 'Load More';
+                    updatePaginationInfo();
+                } else {
+                    pagination.style.display = 'none';
+                }
+            }
+
+            // Hide search info
+            const searchInfo = document.getElementById('search-results-info');
+            if (searchInfo) {
+                searchInfo.style.display = 'none';
+            }
+        }
+
+        // ========== ORIGINAL CODE (Updated) ==========
         const POSTS_DATA = [
             { id: "archetype", title: "The Male Archetype in Modern Society", description: "A long-form reflection on power dynamics and identity.", date: "2025-11-09", tags: ["philosophy", "gender"], category: "essays", cryptpad_url: "https://cryptpad.fr/pad/#/2/pad/view/ABC123/", x_id: "1987934573683237200", reddit_url: "https://www.reddit.com/r/delhi/comments/1osjg99/theyre_detaining_people/" },
             
@@ -264,41 +536,18 @@
         }
 
         function initPostsTable(category) {
-            const posts = window.POSTS_DATA.filter(p => p.category === category);
-            const all = window.POSTS_DATA;
-            const sorted = [...all].sort((a,b) => new Date(b.date) - new Date(a.date));
+            currentCategory = category;
+            currentPage = 1;
+            currentSearchQuery = '';
 
             document.getElementById('category-title').textContent = `${window.CATEGORIES[category].title} Posts`;
             document.getElementById('page-title').textContent = `${window.CATEGORIES[category].title} Posts`;
 
-            const tbody = document.querySelector('#post-table tbody');
-            const render = list => {
-                tbody.innerHTML = '';
-                list.forEach(p => {
-                    const row = tbody.insertRow();
-                    row.dataset.id = p.id;
-                    row.onclick = () => navigate('post', { id: p.id });
-                    row.innerHTML = `<td class="post-title-cell"><span class="title">${p.title}</span><span class="description">${p.description}</span></td><td>${p.date}</td><td>${p.tags.join(', ')}</td>`;
-                });
-            };
-            render(posts);
+            // Initialize search
+            initSearch();
 
-            document.getElementById('search').oninput = e => {
-                const q = e.target.value.toLowerCase();
-                const filtered = posts.filter(p => `${p.title} ${p.description} ${p.tags.join(' ')} ${p.date}`.toLowerCase().includes(q));
-                render(filtered);
-            };
-
-            const recent = document.querySelector('#recent-posts-card #recent-table tbody');
-            if (recent) {
-                document.getElementById('recent-posts-card').style.display = 'block';
-                recent.innerHTML = '';
-                sorted.slice(0, 10).forEach(p => {
-                    const row = recent.insertRow();
-                    row.onclick = () => navigate('post', { id: p.id });
-                    row.innerHTML = `<td class="post-title-cell"><span class="title">${p.title}</span></td><td>${p.date}</td>`;
-                });
-            }
+            // Load first page of posts
+            refreshPostsTable(category);
         }
 
         function initPostDetail(id) {
