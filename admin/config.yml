@@ -1,6 +1,7 @@
 backend:
   name: git-gateway
   branch: main
+  site_domain: jade-florentine-c39e88.netlify.app 
 
 media_folder: "assets/images"
 public_folder: "/assets/images"
