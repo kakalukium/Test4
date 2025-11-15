@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Your Static Document Hub</title>
+    
+    <style>
+        :root { 
+            --bg: #1e1e1e; 
+            --card: #2a2a2a; 
+            --subtle: #888888; 
+            --accent: #007bff;
+            /* Define different font families for different sections */
+            --font-main:'SF Mono', 'sans-serif', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue';
+            --font-post-mobile: 'Menlo','Consolas','Monaco', 'SFMono-Regular', 'SF Mono', 'Roboto Mono', 'Droid Sans Mono';
+            --font-post-desktop: 'Menlo','Liberation Mono', 'Consolas', 'Monaco', 'SFMono-Regular', 'SF Mono', 'Droid Sans Mono';   
+            
+            /* Color variables for different sections */
+            --text-main: #ffffff;
+            --subtle-main: #b9b7b7;
+            --text-post: #d8d8d8;
+            --subtle-post: #888888;
+        }
+        
+        /* Apply main font and colors to body */
+        body { 
+            background: var(--bg); 
+            color: var(--text-main); 
+            font-family: var(--font-main); 
+            margin: 0; 
+            padding: 20px; 
+        }
+        
+        #app-container { max-width: 1200px; margin: 0 auto; }
+        .main-content { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .doc-card { background: var(--card); border-radius: 8px; padding: 20px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; min-height: 100px; }
+        .doc-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        .doc-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 5px; color: var(--text-main); }
+        .doc-description { color: var(--subtle-main); font-size: 0.9rem; }
+        .search { width: 100%; padding: 10px 15px; margin-bottom: 20px; background: var(--card); border: 1px solid #444; border-radius: 4px; color: var(--text-main); box-sizing: border-box; font-size: 1rem; }
+        table { width: 100%; border-collapse: collapse; max-width: 900px; margin: 0 auto; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #333; font-size: 0.95rem; }
+        th { color: var(--subtle-main); font-weight: 500; }
+        tr:hover { background: rgba(255,255,255,0.05); cursor: pointer; }
+        .post-title-cell .title { font-weight: 600; margin-bottom: 3px; display: block; color: var(--text-main); }
+        .post-title-cell .description { color: var(--subtle-main); font-size: 0.85rem; display: block; line-height: 1.4; }
+        #recent-posts-card table th, #recent-posts-card table td { padding: 8px 0; border-bottom: 1px solid #3a3a3a; }
+        
+        /* Pagination styles */
+        .pagination { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            margin: 20px 0; 
+            gap: 10px; 
+        }
+        .load-more-btn { 
+            background: var(--accent); 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 0.9rem; 
+        }
+        .load-more-btn:hover { 
+            background: #0056b3; 
+        }
+        .load-more-btn:disabled { 
+            background: var(--subtle); 
+            cursor: not-allowed; 
+        }
+        .page-info { 
+            color: var(--subtle-main); 
+            font-size: 0.9rem; 
+        }
+        
+        /* Search results styles */
+        .search-results-info { 
+            color: var(--subtle-main); 
+            margin-bottom: 15px; 
+            font-size: 0.9rem; 
+        }
+        
+        /* Apply post font and colors only to post content */
+        #post-content { 
+            font-family: var(--font-post-mobile);
+            color: var(--text-post);
+        }
+        
+        /* Desktop styles for post content */
+        @media (min-width: 768px) {
+            #post-content {
+                font-family: var(--font-post-desktop);
+            }
+        }
+        
+        #post-content h1, #post-content h2, #post-content h3 { 
+            font-weight: 700; 
+            color: var(--text-post);
+        }
+        #post-content h1 { font-size: 2.5rem; margin-top: 0; }
+        
+        .meta { color: var(--subtle-post); margin-bottom: 20px; font-size: 0.9rem; }
+        .content-container { border: 1px solid #333; border-radius: 6px; margin-bottom: 0; overflow: hidden; }
+        #cryptpad-embed { width: 100%; height: 80vh; border: none; background: #1a1a1a; display: block; }
+        #static-content { 
+            font-size: 110%;
+            padding: 20px; 
+            line-height: 1.7; 
+            background: var(--card);
+            /* Apply post font and colors to static content */
+            font-family: var(--font-post-mobile);
+            color: var(--text-post);
+        }
+        
+        /* Desktop styles for static content */
+        @media (min-width: 768px) {
+            #static-content {
+                font-family: var(--font-post-desktop);
+                font-size: 110%;
+            }
+        }
+
+        /* Mobile styles for static content */
+        @media (max-width: 767px) {
+             .content-container {
+                 margin-top: 50px;
+             }
+            #static-content {
+                font-size: 80%;
+            }
+        }
+        
+        .platform-tabs { display: flex; border-bottom: 1px solid #333; margin-bottom: 20px; }
+        .tab-btn { padding: 10px 20px; background: transparent; border: none; color: var(--subtle-main); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s ease; }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .giscus-frame { width: 100%; border: none; }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <!-- All views will be injected here -->
+    </div>
+
+    <!-- Templates (hidden) -->
+    <template id="hub-template">
+        <h1>Document Hub</h1>
+        <div class="main-content" id="category-cards"></div>
+    </template>
+
+    <template id="posts-template">
+        <h1 id="category-title"></h1>
+        <input type="text" id="search-input" class="search" placeholder="Search posts..." />
+        <p id="search-results-info" class="search-results-info" style="display:none;"></p>
+        <table id="post-table">
+            <thead><tr><th>Title</th><th>Date</th><th>Tags</th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <div class="pagination" style="display:none;">
+            <button id="load-more-btn" class="load-more-btn">Load More</button>
+            <span id="page-info" class="page-info"></span>
+        </div>
+    </template>
+
+    <template id="post-template">
+        <div class="content-container">
+            <h1 id="post-title"></h1>
+            <div class="meta" id="post-meta"></div>
+
+            <div class="platform-tabs content-tabs">
+                <button class="tab-btn active" id="static-tab-btn" onclick="openContentTab(this, 'static-content-tab')">Static</button>
+                <button class="tab-btn" id="cryptpad-tab-btn" onclick="openContentTab(this, 'cryptpad-embed-tab')">Cryptpad</button>
+            </div>
+
+            <div id="static-content-tab" class="tab-content active">
+                <div id="static-content" style="padding:20px; background:var(--card); border-radius:6px;"></div>
+            </div>
+            <div id="cryptpad-embed-tab" class="tab-content" style="display:none;">
+                <iframe id="cryptpad-embed" allowfullscreen></iframe>
+            </div>
+
+            <div class="platform-tabs comments-section" style="margin-top:40px;">
+                <button class="tab-btn active" id="twitter-tab-btn" onclick="openTab(this, 'twitter')">X Thread</button>
+                <button class="tab-btn" id="giscus-tab-btn" onclick="openTab(this, 'giscus')">Comments</button>
+            </div>
+
+            <div id="twitter" class="tab-content active">
+                <div id="x-embed-container"></div>
+            </div>
+            <div id="giscus" class="tab-content" style="display:none;">
+                <div id="giscus-container"></div>
+            </div>
+        </div>
+    </template>
+
+    <script async src="https://platform.twitter.com/widgets.js"></script>
+
+    <script>
+        // ========== CONFIG ==========
+        const POSTS_PER_PAGE = 20;
+        let currentPage = 1;
+        let currentCategory = '';
+        let currentSearchQuery = '';
+        let allPosts = [];
+        let searchIndex = [];
+
+        // ========== LOAD JSON DATA ==========
+        async function loadJSON(url, fallback = []) {
+            try {
+                const res = await fetch(url + '?t=' + Date.now());
+                if (res.ok) return await res.json();
+            } catch (e) {
+                console.warn(`Failed to load ${url}, using fallback`);
+            }
+            return fallback;
+        }
+
+        async function initData() {
+            allPosts = await loadJSON('data/pages/page-1.json', []);
+            const page2 = await loadJSON('data/pages/page-2.json', []);
+            allPosts = allPosts.concat(page2);
+
+            searchIndex = await loadJSON('data/search-index.json', allPosts.map(p => ({
+                id: p.id, title: p.title, description: p.description,
+                date: p.date, tags: p.tags, category: p.category
+            })));
+
+            window.POSTS_MAP = allPosts.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+        }
+
+        // ========== RENDER VIEWS ==========
+        function renderTemplate(id, data = {}) {
+            const template = document.getElementById(id + '-template');
+            const clone = template.content.cloneNode(true);
+            const container = document.getElementById('app-container');
+            container.innerHTML = '';
+            container.appendChild(clone);
+
+            if (id === 'hub') renderHub();
+            if (id === 'posts') renderPosts(data.category);
+            if (id === 'post') renderPost(data.id);
+        }
+
+        function renderHub() {
+            document.getElementById('page-title').textContent = 'Document Hub';
+            const container = document.getElementById('category-cards');
+            container.innerHTML = '';
+            Object.keys(window.CATEGORIES).forEach(k => {
+                const card = document.createElement('div');
+                card.className = 'doc-card';
+                card.innerHTML = `<div class="doc-title">${window.CATEGORIES[k].title}</div><div class="doc-description">${window.CATEGORIES[k].description}</div>`;
+                card.onclick = () => navigate('posts', { category: k });
+                container.appendChild(card);
+            });
+        }
+
+        async function renderPosts(category) {
+            currentCategory = category;
+            currentPage = 1;
+            document.getElementById('category-title').textContent = `${window.CATEGORIES[category].title} Posts`;
+            document.getElementById('page-title').textContent = `${window.CATEGORIES[category].title} Posts`;
+
+            const filtered = allPosts.filter(p => p.category === category);
+            await displayPostsPage(filtered, 1);
+
+            const input = document.getElementById('search-input');
+            input.oninput = (e) => searchPosts(e.target.value);
+            document.getElementById('load-more-btn').onclick = loadMore;
+        }
+
+        async function displayPostsPage(posts, page) {
+            const start = (page - 1) * POSTS_PER_PAGE;
+            const end = start + POSTS_PER_PAGE;
+            const pagePosts = posts.slice(start, end);
+            const tbody = document.querySelector('#post-table tbody');
+            if (page === 1) tbody.innerHTML = '';
+
+            pagePosts.forEach(post => {
+                const row = tbody.insertRow();
+                row.dataset.id = post.id;
+                row.onclick = () => navigate('post', { id: post.id });
+                row.innerHTML = `
+                    <td class="post-title-cell">
+                        <span class="title">${post.title}</span>
+                        <span class="description">${post.description}</span>
+                    </td>
+                    <td>${post.date}</td>
+                    <td>${post.tags.join(', ')}</td>
+                `;
+            });
+
+            const hasMore = end < posts.length;
+            const pagination = document.querySelector('.pagination');
+            const btn = document.getElementById('load-more-btn');
+            const info = document.getElementById('page-info');
+            if (hasMore) {
+                pagination.style.display = 'flex';
+                btn.disabled = false;
+                btn.textContent = 'Load More';
+                info.textContent = `Showing ${Math.min(end, posts.length)} of ${posts.length}`;
+            } else {
+                pagination.style.display = hasMore ? 'flex' : 'none';
+                btn.disabled = true;
+                btn.textContent = 'No more';
+            }
+        }
+
+        function searchPosts(query) {
+            currentSearchQuery = query.toLowerCase().trim();
+            const filtered = allPosts.filter(p =>
+                p.title.toLowerCase().includes(currentSearchQuery) ||
+                p.description.toLowerCase().includes(currentSearchQuery) ||
+                p.tags.some(t => t.toLowerCase().includes(currentSearchQuery))
+            );
+            displayPostsPage(filtered, 1);
+            document.getElementById('search-results-info').textContent =
+                query ? `Found ${filtered.length} results for "${query}"` : '';
+            document.getElementById('search-results-info').style.display = query ? 'block' : 'none';
+        }
+
+        function loadMore() {
+            currentPage++;
+            const filtered = currentSearchQuery
+                ? allPosts.filter(p => 
+                    p.title.toLowerCase().includes(currentSearchQuery) ||
+                    p.description.toLowerCase().includes(currentSearchQuery) ||
+                    p.tags.some(t => t.toLowerCase().includes(currentSearchQuery))
+                )
+                : allPosts.filter(p => p.category === currentCategory);
+            displayPostsPage(filtered, currentPage);
+        }
+
+        function renderPost(id) {
+            const post = window.POSTS_MAP[id];
+            if (!post) { alert('Not found'); navigate('hub'); return; }
+            document.getElementById('post-title').textContent = post.title;
+            document.getElementById('page-title').textContent = post.title;
+            document.getElementById('post-meta').textContent = `${post.date} • ${post.tags.join(', ')}`;
+            document.getElementById('static-content').innerHTML = post.content || 'No content.';
+
+            const iframe = document.getElementById('cryptpad-embed');
+            if (post.cryptpad_url) {
+                iframe.src = post.cryptpad_url.replace('/edit/', '/view/') + '?embed=1';
+                openContentTab(document.getElementById('cryptpad-tab-btn'), 'cryptpad-embed-tab');
+            } else {
+                iframe.src = 'about:blank';
+                openContentTab(document.getElementById('static-tab-btn'), 'static-content-tab');
+            }
+
+            initializeEmbeds(post);
+            openTab(document.getElementById('twitter-tab-btn'), 'twitter');
+        }
+
+        // ========== NAVIGATION ==========
+        function navigate(view, params = {}) {
+            const url = new URL(window.location);
+            url.searchParams.set('view', view);
+            Object.keys(params).forEach(k => url.searchParams.set(k, params[k]));
+            history.pushState(params, '', url);
+            render();
+        }
+        window.addEventListener('popstate', render);
+
+        async function render() {
+            const params = new URLSearchParams(location.search);
+            const view = params.get('view') || 'hub';
+            await initData(); // Ensure data is loaded
+            renderTemplate(view, { category: params.get('category'), id: params.get('id') });
+        }
+
+        // ========== TABS & EMBEDS ==========
+        function openContentTab(btn, tabName) {
+            document.querySelectorAll('.content-tabs .tab-content').forEach(t => {
+                t.classList.remove('active'); t.style.display = 'none';
+            });
+            document.querySelectorAll('.content-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            document.getElementById(tabName).style.display = 'block';
+            if (btn) btn.classList.add('active');
+        }
+        window.openContentTab = openContentTab;
+
+        function openTab(btn, tabName) {
+            document.querySelectorAll('.comments-section .tab-content').forEach(t => { 
+                t.classList.remove('active'); 
+                t.style.display = 'none'; 
+            });
+            document.querySelectorAll('.comments-section .tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active'); 
+            document.getElementById(tabName).style.display = 'block';
+            if (btn) btn.classList.add('active');
+            if (tabName === 'twitter' && window.twttr) setTimeout(() => twttr.widgets.load(), 100);
+            if (tabName === 'giscus') loadGiscus();
+        }
+
+        function loadGiscus() {
+            const giscusContainer = document.getElementById('giscus-container');
+            if (giscusContainer && !giscusContainer.querySelector('iframe')) {
+                const script = document.createElement('script');
+                script.src = "https://giscus.app/client.js";
+                script.setAttribute('data-repo', "kakalukium/Test");
+                script.setAttribute('data-repo-id', "R_kgDOQSQMcQ");
+                script.setAttribute('data-category', "Announcements");
+                script.setAttribute('data-category-id', "DIC_kwDOQSQMcc4CxrCG");
+                script.setAttribute('data-mapping', "pathname");
+                script.setAttribute('data-strict', "0");
+                script.setAttribute('data-reactions-enabled', "1");
+                script.setAttribute('data-emit-metadata', "0");
+                script.setAttribute('data-input-position', "bottom");
+                script.setAttribute('data-theme', "dark");
+                script.setAttribute('data-lang', "en");
+                script.setAttribute('crossorigin', "anonymous");
+                script.async = true;
+                giscusContainer.appendChild(script);
+            }
+        }
+
+        function initializeEmbeds(post) {
+            const xContainer = document.getElementById('x-embed-container');
+            xContainer.innerHTML = '';
+            if (post.x_id) {
+                if (window.twttr && twttr.widgets) {
+                    twttr.widgets.createTweet(post.x_id, xContainer, { theme: 'dark', conversation: 'all' });
+                } else {
+                    xContainer.innerHTML = `<blockquote class="twitter-tweet">Loading X thread...</blockquote>`;
+                }
+            } else {
+                xContainer.innerHTML = `<p style="color:var(--subtle-post);">No X thread linked.</p>`;
+            }
+        }
+
+        window.onload = () => {
+            window.CATEGORIES = { 
+                essays: { title: "Essays", description: "Long-form reflections." }, 
+                rants: { title: "Rants", description: "Raw takes." }, 
+                research: { title: "Research", description: "Data & analysis." },
+                drafts: { title: "Drafts", description: "WIP." }
+            };
+            render();
+        };
+    </script>
+</body>
+</html>

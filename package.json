@@ -1,0 +1,8 @@
+{
+  "name": "your-site",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node scripts/build-content.js",
+    "convert": "node scripts/convert-posts.js"
+  }
+}
