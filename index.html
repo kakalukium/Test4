@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -144,312 +142,256 @@
     </style>
 </head>
 <body>
-    <div id="app-container"><h1>Loading Application...</h1></div>
+    <div id="app-container">
+        <!-- All views will be injected here -->
+    </div>
+
+    <!-- Templates (hidden) -->
+    <template id="hub-template">
+        <h1>Document Hub</h1>
+        <div class="main-content" id="category-cards"></div>
+    </template>
+
+    <template id="posts-template">
+        <h1 id="category-title"></h1>
+        <input type="text" id="search-input" class="search" placeholder="Search posts..." />
+        <p id="search-results-info" class="search-results-info" style="display:none;"></p>
+        <table id="post-table">
+            <thead><tr><th>Title</th><th>Date</th><th>Tags</th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <div class="pagination" style="display:none;">
+            <button id="load-more-btn" class="load-more-btn">Load More</button>
+            <span id="page-info" class="page-info"></span>
+        </div>
+    </template>
+
+    <template id="post-template">
+        <div class="content-container">
+            <h1 id="post-title"></h1>
+            <div class="meta" id="post-meta"></div>
+
+            <div class="platform-tabs content-tabs">
+                <button class="tab-btn active" id="static-tab-btn" onclick="openContentTab(this, 'static-content-tab')">Static</button>
+                <button class="tab-btn" id="cryptpad-tab-btn" onclick="openContentTab(this, 'cryptpad-embed-tab')">Cryptpad</button>
+            </div>
+
+            <div id="static-content-tab" class="tab-content active">
+                <div id="static-content" style="padding:20px; background:var(--card); border-radius:6px;"></div>
+            </div>
+            <div id="cryptpad-embed-tab" class="tab-content" style="display:none;">
+                <iframe id="cryptpad-embed" allowfullscreen></iframe>
+            </div>
+
+            <div class="platform-tabs comments-section" style="margin-top:40px;">
+                <button class="tab-btn active" id="twitter-tab-btn" onclick="openTab(this, 'twitter')">X Thread</button>
+                <button class="tab-btn" id="giscus-tab-btn" onclick="openTab(this, 'giscus')">Comments</button>
+            </div>
+
+            <div id="twitter" class="tab-content active">
+                <div id="x-embed-container"></div>
+            </div>
+            <div id="giscus" class="tab-content" style="display:none;">
+                <div id="giscus-container"></div>
+            </div>
+        </div>
+    </template>
 
     <script async src="https://platform.twitter.com/widgets.js"></script>
 
     <script>
-        // ========== STEP 5.1: PAGINATION IMPLEMENTATION ==========
+        // ========== CONFIG ==========
         const POSTS_PER_PAGE = 20;
         let currentPage = 1;
         let currentCategory = '';
         let currentSearchQuery = '';
         let allPosts = [];
-        let filteredPosts = [];
+        let searchIndex = [];
 
-        // Replace POSTS_DATA with paginated loading
-        async function loadPosts(page = 1, category = '', searchQuery = '') {
+        // ========== LOAD JSON DATA ==========
+        async function loadJSON(url, fallback = []) {
             try {
-                // Try to load from JSON files first (for GitHub Pages migration)
-                const response = await fetch(`_data/pages/page-${page}.json`);
-                if (response.ok) {
-                    return await response.json();
-                }
-            } catch (error) {
-                console.log('Using fallback POSTS_DATA');
+                const res = await fetch(url + '?t=' + Date.now());
+                if (res.ok) return await res.json();
+            } catch (e) {
+                console.warn(`Failed to load ${url}, using fallback`);
             }
-            
-            // Fallback to original POSTS_DATA during migration
-            let posts = window.POSTS_DATA || [];
-            
-            // Apply category filter
-            if (category && category !== 'all') {
-                posts = posts.filter(p => p.category === category);
-            }
-            
-            // Apply search filter
-            if (searchQuery) {
-                const query = searchQuery.toLowerCase();
-                posts = posts.filter(p => 
-                    p.title.toLowerCase().includes(query) || 
-                    p.description.toLowerCase().includes(query) ||
-                    p.tags.some(tag => tag.toLowerCase().includes(query)) ||
-                    p.date.includes(query)
-                );
-            }
-            
-            // Sort by date (newest first)
-            posts.sort((a, b) => new Date(b.date) - new Date(a.date));
-            
-            // Manual pagination for fallback data
+            return fallback;
+        }
+
+        async function initData() {
+            allPosts = await loadJSON('_data/pages/page-1.json', []);
+            const page2 = await loadJSON('_data/pages/page-2.json', []);
+            allPosts = allPosts.concat(page2);
+
+            searchIndex = await loadJSON('_data/search-index.json', allPosts.map(p => ({
+                id: p.id, title: p.title, description: p.description,
+                date: p.date, tags: p.tags, category: p.category
+            })));
+
+            window.POSTS_MAP = allPosts.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+        }
+
+        // ========== RENDER VIEWS ==========
+        function renderTemplate(id, data = {}) {
+            const template = document.getElementById(id + '-template');
+            const clone = template.content.cloneNode(true);
+            const container = document.getElementById('app-container');
+            container.innerHTML = '';
+            container.appendChild(clone);
+
+            if (id === 'hub') renderHub();
+            if (id === 'posts') renderPosts(data.category);
+            if (id === 'post') renderPost(data.id);
+        }
+
+        function renderHub() {
+            document.getElementById('page-title').textContent = 'Document Hub';
+            const container = document.getElementById('category-cards');
+            container.innerHTML = '';
+            Object.keys(window.CATEGORIES).forEach(k => {
+                const card = document.createElement('div');
+                card.className = 'doc-card';
+                card.innerHTML = `<div class="doc-title">${window.CATEGORIES[k].title}</div><div class="doc-description">${window.CATEGORIES[k].description}</div>`;
+                card.onclick = () => navigate('posts', { category: k });
+                container.appendChild(card);
+            });
+        }
+
+        async function renderPosts(category) {
+            currentCategory = category;
+            currentPage = 1;
+            document.getElementById('category-title').textContent = `${window.CATEGORIES[category].title} Posts`;
+            document.getElementById('page-title').textContent = `${window.CATEGORIES[category].title} Posts`;
+
+            const filtered = allPosts.filter(p => p.category === category);
+            await displayPostsPage(filtered, 1);
+
+            const input = document.getElementById('search-input');
+            input.oninput = (e) => searchPosts(e.target.value);
+            document.getElementById('load-more-btn').onclick = loadMore;
+        }
+
+        async function displayPostsPage(posts, page) {
             const start = (page - 1) * POSTS_PER_PAGE;
             const end = start + POSTS_PER_PAGE;
-            return posts.slice(start, end);
-        }
+            const pagePosts = posts.slice(start, end);
+            const tbody = document.querySelector('#post-table tbody');
+            if (page === 1) tbody.innerHTML = '';
 
-        async function loadMorePosts() {
-            currentPage++;
-            const newPosts = await loadPosts(currentPage, currentCategory, currentSearchQuery);
-            
-            if (newPosts.length > 0) {
-                // Append to your posts container
-                const tbody = document.querySelector('#post-table tbody');
-                newPosts.forEach(post => {
-                    const row = tbody.insertRow();
-                    row.dataset.id = post.id;
-                    row.onclick = () => navigate('post', { id: post.id });
-                    row.innerHTML = `<td class="post-title-cell"><span class="title">${post.title}</span><span class="description">${post.description}</span></td><td>${post.date}</td><td>${post.tags.join(', ')}</td>`;
-                });
-                
-                // Update pagination info
-                updatePaginationInfo();
+            pagePosts.forEach(post => {
+                const row = tbody.insertRow();
+                row.dataset.id = post.id;
+                row.onclick = () => navigate('post', { id: post.id });
+                row.innerHTML = `
+                    <td class="post-title-cell">
+                        <span class="title">${post.title}</span>
+                        <span class="description">${post.description}</span>
+                    </td>
+                    <td>${post.date}</td>
+                    <td>${post.tags.join(', ')}</td>
+                `;
+            });
+
+            const hasMore = end < posts.length;
+            const pagination = document.querySelector('.pagination');
+            const btn = document.getElementById('load-more-btn');
+            const info = document.getElementById('page-info');
+            if (hasMore) {
+                pagination.style.display = 'flex';
+                btn.disabled = false;
+                btn.textContent = 'Load More';
+                info.textContent = `Showing ${Math.min(end, posts.length)} of ${posts.length}`;
             } else {
-                // No more posts to load
-                document.getElementById('load-more-btn').disabled = true;
-                document.getElementById('load-more-btn').textContent = 'No more posts';
+                pagination.style.display = hasMore ? 'flex' : 'none';
+                btn.disabled = true;
+                btn.textContent = 'No more';
             }
         }
 
-        function updatePaginationInfo() {
-            const pageInfo = document.getElementById('page-info');
-            if (pageInfo) {
-                const loadedCount = currentPage * POSTS_PER_PAGE;
-                const totalCount = filteredPosts.length || (currentCategory ? 
-                    window.POSTS_DATA.filter(p => p.category === currentCategory).length : 
-                    window.POSTS_DATA.length);
-                
-                pageInfo.textContent = `Showing ${Math.min(loadedCount, totalCount)} of ${totalCount} posts`;
-            }
+        function searchPosts(query) {
+            currentSearchQuery = query.toLowerCase().trim();
+            const filtered = allPosts.filter(p =>
+                p.title.toLowerCase().includes(currentSearchQuery) ||
+                p.description.toLowerCase().includes(currentSearchQuery) ||
+                p.tags.some(t => t.toLowerCase().includes(currentSearchQuery))
+            );
+            displayPostsPage(filtered, 1);
+            document.getElementById('search-results-info').textContent =
+                query ? `Found ${filtered.length} results for "${query}"` : '';
+            document.getElementById('search-results-info').style.display = query ? 'block' : 'none';
         }
 
-        // ========== STEP 5.2: SEARCH FUNCTIONALITY ==========
-        async function initSearch() {
-            const searchInput = document.getElementById('search-input');
-            if (!searchInput) return;
-
-            // Load search index from JSON file
-            let searchIndex = [];
-            try {
-                const response = await fetch('_data/search-index.json');
-                if (response.ok) {
-                    searchIndex = await response.json();
-                }
-            } catch (error) {
-                console.log('Using POSTS_DATA as search index');
-                // Fallback to POSTS_DATA
-                searchIndex = window.POSTS_DATA.map(post => ({
-                    id: post.id,
-                    title: post.title,
-                    description: post.description,
-                    date: post.date,
-                    tags: post.tags,
-                    category: post.category,
-                    content: post.content ? post.content.substring(0, 200) : ''
-                }));
-            }
-
-            searchInput.addEventListener('input', async (e) => {
-                const query = e.target.value.toLowerCase().trim();
-                currentSearchQuery = query;
-                currentPage = 1;
-
-                if (query.length === 0) {
-                    // Clear search, show all posts
-                    await refreshPostsTable(currentCategory, '');
-                    return;
-                }
-
-                // Perform search
-                const results = searchIndex.filter(post => 
-                    post.title.toLowerCase().includes(query) || 
-                    post.description.toLowerCase().includes(query) ||
-                    post.tags.some(tag => tag.toLowerCase().includes(query)) ||
-                    (post.content && post.content.toLowerCase().includes(query)) ||
-                    post.date.includes(query)
-                );
-
-                // Display search results
-                displaySearchResults(results, query);
-            });
+        function loadMore() {
+            currentPage++;
+            const filtered = currentSearchQuery
+                ? allPosts.filter(p => 
+                    p.title.toLowerCase().includes(currentSearchQuery) ||
+                    p.description.toLowerCase().includes(currentSearchQuery) ||
+                    p.tags.some(t => t.toLowerCase().includes(currentSearchQuery))
+                )
+                : allPosts.filter(p => p.category === currentCategory);
+            displayPostsPage(filtered, currentPage);
         }
 
-        function displaySearchResults(results, query) {
-            const tbody = document.querySelector('#post-table tbody');
-            const searchInfo = document.getElementById('search-results-info');
-            
-            if (searchInfo) {
-                if (query.length > 0) {
-                    searchInfo.textContent = `Found ${results.length} results for "${query}"`;
-                    searchInfo.style.display = 'block';
-                } else {
-                    searchInfo.style.display = 'none';
-                }
+        function renderPost(id) {
+            const post = window.POSTS_MAP[id];
+            if (!post) { alert('Not found'); navigate('hub'); return; }
+            document.getElementById('post-title').textContent = post.title;
+            document.getElementById('page-title').textContent = post.title;
+            document.getElementById('post-meta').textContent = `${post.date} • ${post.tags.join(', ')}`;
+            document.getElementById('static-content').innerHTML = post.content || 'No content.';
+
+            const iframe = document.getElementById('cryptpad-embed');
+            if (post.cryptpad_url) {
+                iframe.src = post.cryptpad_url.replace('/edit/', '/view/') + '?embed=1';
+                openContentTab(document.getElementById('cryptpad-tab-btn'), 'cryptpad-embed-tab');
+            } else {
+                iframe.src = 'about:blank';
+                openContentTab(document.getElementById('static-tab-btn'), 'static-content-tab');
             }
 
-            // Clear current table
-            tbody.innerHTML = '';
-            
-            if (results.length === 0 && query.length > 0) {
-                tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--subtle-main);">No posts found matching "${query}"</td></tr>`;
-                // Hide pagination for search results
-                const pagination = document.querySelector('.pagination');
-                if (pagination) pagination.style.display = 'none';
-                return;
-            }
-
-            // Show results (paginated for first page)
-            const start = 0;
-            const end = Math.min(results.length, POSTS_PER_PAGE);
-            const pageResults = results.slice(start, end);
-
-            pageResults.forEach(post => {
-                const row = tbody.insertRow();
-                row.dataset.id = post.id;
-                row.onclick = () => navigate('post', { id: post.id });
-                row.innerHTML = `<td class="post-title-cell"><span class="title">${post.title}</span><span class="description">${post.description}</span></td><td>${post.date}</td><td>${post.tags.join(', ')}</td>`;
-            });
-
-            // Update pagination for search results
-            const pagination = document.querySelector('.pagination');
-            if (pagination) {
-                if (results.length > POSTS_PER_PAGE) {
-                    pagination.style.display = 'flex';
-                    document.getElementById('load-more-btn').disabled = false;
-                    document.getElementById('load-more-btn').textContent = 'Load More';
-                    document.getElementById('page-info').textContent = `Showing ${end} of ${results.length} results`;
-                } else {
-                    pagination.style.display = 'none';
-                }
-            }
-
-            // Store current results for pagination
-            filteredPosts = results;
+            initializeEmbeds(post);
+            openTab(document.getElementById('twitter-tab-btn'), 'twitter');
         }
 
-        async function refreshPostsTable(category, searchQuery = '') {
-            currentCategory = category;
-            currentSearchQuery = searchQuery;
-            currentPage = 1;
+        // ========== NAVIGATION ==========
+        function navigate(view, params = {}) {
+            const url = new URL(window.location);
+            url.searchParams.set('view', view);
+            Object.keys(params).forEach(k => url.searchParams.set(k, params[k]));
+            history.pushState(params, '', url);
+            render();
+        }
+        window.addEventListener('popstate', render);
 
-            const posts = await loadPosts(1, category, searchQuery);
-            const tbody = document.querySelector('#post-table tbody');
-            
-            // Clear table
-            tbody.innerHTML = '';
-            
-            if (posts.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--subtle-main);">No posts found</td></tr>`;
-                return;
-            }
-
-            // Render first page
-            posts.forEach(post => {
-                const row = tbody.insertRow();
-                row.dataset.id = post.id;
-                row.onclick = () => navigate('post', { id: post.id });
-                row.innerHTML = `<td class="post-title-cell"><span class="title">${post.title}</span><span class="description">${post.description}</span></td><td>${post.date}</td><td>${post.tags.join(', ')}</td>`;
-            });
-
-            // Show/hide pagination
-            const pagination = document.querySelector('.pagination');
-            if (pagination) {
-                const totalPosts = category ? 
-                    window.POSTS_DATA.filter(p => p.category === category).length : 
-                    window.POSTS_DATA.length;
-                
-                if (totalPosts > POSTS_PER_PAGE) {
-                    pagination.style.display = 'flex';
-                    document.getElementById('load-more-btn').disabled = false;
-                    document.getElementById('load-more-btn').textContent = 'Load More';
-                    updatePaginationInfo();
-                } else {
-                    pagination.style.display = 'none';
-                }
-            }
-
-            // Hide search info
-            const searchInfo = document.getElementById('search-results-info');
-            if (searchInfo) {
-                searchInfo.style.display = 'none';
-            }
+        async function render() {
+            const params = new URLSearchParams(location.search);
+            const view = params.get('view') || 'hub';
+            await initData(); // Ensure data is loaded
+            renderTemplate(view, { category: params.get('category'), id: params.get('id') });
         }
 
-        // ========== ORIGINAL CODE (Updated) ==========
-        const POSTS_DATA = [
-            { id: "archetype", title: "The Male Archetype in Modern Society", description: "A long-form reflection on power dynamics and identity.", date: "2025-11-09", tags: ["philosophy", "gender"], category: "essays", cryptpad_url: "https://cryptpad.fr/pad/#/2/pad/view/ABC123/", x_id: "1987934573683237200", reddit_url: "https://www.reddit.com/r/delhi/comments/1osjg99/theyre_detaining_people/" },
-            
-            // --- NEW SAMPLE POST FOR CONTENT ---
-            { 
-                id: "font-showcase", 
-                title: "Font Styling Showcase", 
-                description: "A demonstration of the custom font applied to a local HTML post.", 
-                date: "2025-11-12", 
-                tags: ["design", "css", "font"], 
-                category: "essays", 
-                content: `
-                <div style="padding: 10px 0;">
-                    <h2>Static Content with Custom Font Styling</h2>
-                    <p>This content uses different fonts and colors compared to the main pages:</p>
-                    <ul>
-                        <li><strong>Font:</strong> Consolas on desktop, monospace on mobile</li>
-                        <li><strong>Text Color:</strong> Lighter gray (#cccccc)</li>
-                        <li><strong>Subtle Color:</strong> Medium gray (#888888)</li>
-                    </ul>
-                    
-                    <h3>Readability Check</h3>
-                    <p>The specialized styling creates a distinct reading experience separate from the navigation interface.</p>
-                    
-                    <ol>
-                        <li>This list item demonstrates the paragraph text styling.</li>
-                        <li><strong>Bold text</strong> maintains the post color scheme.</li>
-                        <li><em>Italic text</em> offers stylistic variation within the same palette.</li>
-                    </ol>
-                    
-                    <h4>Device Testing</h4>
-                    <p>On desktop: Consolas font<br>On mobile: System monospace font</p>
-                </div>
-                `
-            },
-            // --- END NEW SAMPLE POST ---
-
-            { id: "truth-blogging", title: "Truth Social as Macro-Blogging", description: "Analysis of long-form non-interactive posting.", date: "2025-11-05", tags: ["social media"], category: "rants", content: "<p>Truth Social proves single-author format works.</p>", x_id: "1987934573683237200", reddit_url: "https://www.reddit.com/r/delhi/comments/1osjg99/theyre_detaining_people/" },
-            { id: "rant-1", title: "Why Modern Dating is Broken", description: "Raw take on dating apps.", date: "2025-11-03", tags: ["rant"], category: "rants", cryptpad_url: "https://cryptpad.fr/code/#/2/code/view/XYZ789/", x_id: "1987934573683237200", reddit_url: "https://www.reddit.com/r/delhi/comments/1osjg99/theyre_detaining_people/" },
-            { id: "research-1", title: "Data on Male Loneliness (2025)", description: "Statistical rise in loneliness.", date: "2025-11-01", tags: ["data"], category: "research", content: "<p>Sharp rise in self-reported loneliness.</p>", x_id: "1987934573683237200", reddit_url: "https://www.reddit.com/r/delhi/comments/1osjg99/theyre_detaining_people/" }
-        ];
-
-        window.POSTS_DATA = POSTS_DATA;
-        window.POSTS_MAP = POSTS_DATA.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
-        window.CATEGORIES = {
-            essays: { title: "Essays", description: "Long-form reflections." },
-            rants: { title: "Rants", description: "Raw takes." },
-            research: { title: "Research", description: "Data & analysis." },
-            drafts: { title: "Drafts", description: "WIP." }
-        };
-
-        // Separate function for content tabs to prevent conflict with discussion tabs
+        // ========== TABS & EMBEDS ==========
         function openContentTab(btn, tabName) {
-            document.querySelectorAll('.content-tabs .tab-content').forEach(t => { t.classList.remove('active'); t.style.display = 'none'; });
+            document.querySelectorAll('.content-tabs .tab-content').forEach(t => {
+                t.classList.remove('active'); t.style.display = 'none';
+            });
             document.querySelectorAll('.content-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(tabName).classList.add('active'); 
+            document.getElementById(tabName).classList.add('active');
             document.getElementById(tabName).style.display = 'block';
             if (btn) btn.classList.add('active');
         }
-        window.openContentTab = openContentTab; // Make accessible from post.html
+        window.openContentTab = openContentTab;
 
         function openTab(btn, tabName) {
-            document.querySelectorAll('.comments-section .tab-content').forEach(t => { t.classList.remove('active'); t.style.display = 'none'; });
+            document.querySelectorAll('.comments-section .tab-content').forEach(t => { 
+                t.classList.remove('active'); 
+                t.style.display = 'none'; 
+            });
             document.querySelectorAll('.comments-section .tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(tabName).classList.add('active'); document.getElementById(tabName).style.display = 'block';
+            document.getElementById(tabName).classList.add('active'); 
+            document.getElementById(tabName).style.display = 'block';
             if (btn) btn.classList.add('active');
             if (tabName === 'twitter' && window.twttr) setTimeout(() => twttr.widgets.load(), 100);
             if (tabName === 'giscus') loadGiscus();
@@ -489,106 +431,17 @@
             } else {
                 xContainer.innerHTML = `<p style="color:var(--subtle-post);">No X thread linked.</p>`;
             }
-
-            const redditIframe = document.getElementById('reddit-iframe');
-            if (post.reddit_url) {
-                const match = post.reddit_url.match(/\/r\/[^/]+\/comments\/[^/]+/);
-                redditIframe.src = match ? `https://www.reddit.com${match[0]}/embed?theme=dark` : 'about:blank';
-            } else {
-                redditIframe.src = 'about:blank';
-            }
         }
 
-        function navigate(view, params = {}) {
-            const url = new URL(window.location);
-            url.searchParams.set('view', view);
-            Object.keys(params).forEach(k => url.searchParams.set(k, params[k]));
-            history.pushState(params, '', url);
+        window.onload = () => {
+            window.CATEGORIES = { 
+                essays: { title: "Essays", description: "Long-form reflections." }, 
+                rants: { title: "Rants", description: "Raw takes." }, 
+                research: { title: "Research", description: "Data & analysis." },
+                drafts: { title: "Drafts", description: "WIP." }
+            };
             render();
-        }
-
-        window.addEventListener('popstate', render);
-
-        async function loadView(name, params = {}) {
-            const container = document.getElementById('app-container');
-            container.innerHTML = '<h1>Loading...</h1>';
-            try {
-                const res = await fetch(`${name}.html`);
-                if (!res.ok) throw new Error();
-                container.innerHTML = await res.text();
-                if (name === 'hub') initHub();
-                if (name === 'posts') initPostsTable(params.category);
-                if (name === 'post') initPostDetail(params.id);
-            } catch (e) {
-                container.innerHTML = `<h1>Error</h1><p>File ${name}.html not found.</p>`;
-            }
-        }
-
-        function initHub() {
-            document.getElementById('page-title').textContent = 'Document Hub';
-            const content = document.querySelector('.main-content');
-            content.innerHTML = '';
-            Object.keys(window.CATEGORIES).forEach(k => {
-                const card = document.createElement('div');
-                card.className = 'doc-card';
-                card.innerHTML = `<div class="doc-title">${window.CATEGORIES[k].title}</div><div class="doc-description">${window.CATEGORIES[k].description}</div>`;
-                card.onclick = () => navigate('posts', { category: k });
-                content.appendChild(card);
-            });
-        }
-
-        function initPostsTable(category) {
-            currentCategory = category;
-            currentPage = 1;
-            currentSearchQuery = '';
-
-            document.getElementById('category-title').textContent = `${window.CATEGORIES[category].title} Posts`;
-            document.getElementById('page-title').textContent = `${window.CATEGORIES[category].title} Posts`;
-
-            // Initialize search
-            initSearch();
-
-            // Load first page of posts
-            refreshPostsTable(category);
-        }
-
-        function initPostDetail(id) {
-            const post = window.POSTS_MAP[id];
-            if (!post) { alert('Post not found'); navigate('hub'); return; }
-            document.getElementById('post-title').textContent = post.title;
-            document.getElementById('page-title').textContent = post.title;
-            document.getElementById('post-meta').textContent = `${post.date} • ${post.tags.join(', ')}`;
-
-            const staticDiv = document.getElementById('static-content');
-            const iframe = document.getElementById('cryptpad-embed');
-            
-            // Set static content and iframe source first
-            staticDiv.innerHTML = post.content || 'No static content.';
-            if (post.cryptpad_url) {
-                iframe.src = post.cryptpad_url.replace('/edit/', '/view/') + '?embed=1';
-            } else {
-                iframe.src = 'about:blank';
-            }
-
-            // Determine which content tab to open on load
-            if (post.cryptpad_url) {
-                openContentTab(document.getElementById('cryptpad-tab-btn'), 'cryptpad-embed-tab');
-            } else {
-                openContentTab(document.getElementById('static-tab-btn'), 'static-content-tab');
-            }
-            
-            initializeEmbeds(post);
-            openTab(document.querySelector('#twitter-tab-btn'), 'twitter');
-        }
-
-        function render() {
-            const params = new URLSearchParams(location.search);
-            const view = params.get('view') || 'hub';
-            const opts = { category: params.get('category'), id: params.get('id') };
-            loadView(view, opts);
-        }
-
-        window.onload = render;
+        };
     </script>
 </body>
 </html>
