@@ -220,11 +220,11 @@
         }
 
         async function initData() {
-            allPosts = await loadJSON('_data/pages/page-1.json', []);
-            const page2 = await loadJSON('_data/pages/page-2.json', []);
+            allPosts = await loadJSON('data/pages/page-1.json', []);
+            const page2 = await loadJSON('data/pages/page-2.json', []);
             allPosts = allPosts.concat(page2);
 
-            searchIndex = await loadJSON('_data/search-index.json', allPosts.map(p => ({
+            searchIndex = await loadJSON('data/search-index.json', allPosts.map(p => ({
                 id: p.id, title: p.title, description: p.description,
                 date: p.date, tags: p.tags, category: p.category
             })));
