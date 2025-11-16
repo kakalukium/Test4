@@ -1,0 +1,17 @@
+---
+title: "Just Your Daily Ego Shattering Reminder That You Live In An Input Output System."
+date: 2025-11-13
+tags: ["spirituality"]
+category: "essays"
+description: "JACK OF FACES @JackOfFaces 2025-08-15https://x.com/JackOfFaces/status/1956234150203285517 Just your daily ego-shattering reminder that you live in an input/output system. Whatever biases you feed to the universe through your belief system - it will keep giving you proof of those biases. Why? Because..."
+---
+
+**JACK OF FACES** @JackOfFaces [2025-08-15](https://x.com/JackOfFaces/status/1956234150203285517)
+
+Just your daily ego-shattering reminder that you live in an input/output system.
+
+Whatever biases you feed to the universe through your belief system - it will keep giving you proof of those biases.
+
+Why?
+
+Because it wants your ego to grow by being right - a self-inflicted trap.

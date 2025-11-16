@@ -1,0 +1,22 @@
+<div style="max-width: 900px; margin: 0 auto;">
+    <h1 id="category-title"></h1>
+    <input type="text" id="search" class="search" placeholder="Search posts…">
+
+    <div id="recent-posts-card" class="doc-card" style="margin-bottom: 25px; display: none; padding: 15px;">
+        <h2 style="margin: 0 0 10px 0; font-size: 1.25rem;">Recent Posts</h2>
+        <table id="recent-table">
+            <thead><tr><th>Title</th><th>Date</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <table id="post-table">
+        <thead><tr><th>Title & Description</th><th>Date</th><th>Tags</th></tr></thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<style>
+    .post-title-cell .title { font-weight: 600; margin-bottom: 3px; display: block; }
+    .post-title-cell .description { color: var(--subtle); font-size: 0.85rem; display: block; line-height: 1.4; }
+</style>
