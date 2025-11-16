@@ -340,7 +340,7 @@
             document.getElementById('post-title').textContent = post.title;
             document.getElementById('page-title').textContent = post.title;
             document.getElementById('post-meta').textContent = `${post.date} • ${post.tags.join(', ')}`;
-            document.getElementById('static-content').innerHTML = post.content || 'No content.';
+            document.getElementById('static-content').innerHTML = post.content || `<p>${post.description || 'No content.'}</p>`;
 
             const iframe = document.getElementById('cryptpad-embed');
             if (post.cryptpad_url) {

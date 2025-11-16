@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "build": "node scripts/build-content.js",
-    "convert": "node scripts/convert-posts.js"
+    "convert": "node scripts/convert-posts.js",
+    "dev": "npm run convert && npm run build"
   }
 }
